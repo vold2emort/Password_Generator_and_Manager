@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import messagebox
 from random import choice, randint, shuffle
 import pyperclip
-# ---------------------------- PASSWORD GENERATOR ------------------------------- #
+import json
 # Password Generator Project
 
 
@@ -25,26 +25,60 @@ def generate_password():
     password = "".join(password_list)
     password_input.insert(0, password)
     pyperclip.copy(password)
-# ---------------------------- SAVE PASSWORD ------------------------------- #
+
+
+# Search
+def find_password():
+    search_label = website_input.get()
+    with open("data.json", "r") as data_file:
+        data = json.load(data_file)
+
+    for key in data:
+        if search_label == key:
+            messagebox.showinfo(title="Information", message=f"Website: {key}\n"
+                                                             f"Email: {data[key]['email']}\n"
+                                                             f"Password: {data[key]['password']}")
+
+# Password save
 
 
 def save():
     website = website_input.get()
     email = email_input.get()
     password_box = password_input.get()
+    new_data = {
+        website: {
+            "email": email,
+            "password": password_box,
+        }
+    }
     if len(website) == 0 or len(password_box) == 0:
         messagebox.showinfo(title="Error", message="Don't leave the fields empty")
     else:
-        is_ok = messagebox.askokcancel(title="website", message=f"Details entered are: \n Website: {website} "
-                                                                f"\nEmail: {email} "
-                                                                f"\nPassword: {password_box}")
-        if is_ok:
-            with open("data.txt", "a") as data_file:
-                data_file.write(f"{website} | {email} | {password_box}\n")
-                website_input.delete(0, END)
-                password_input.delete(0, END)
+        try:
+            # reading old data can cause DcodeError if file empty
+            # can cause fileNotFound error if there is no file
+            with open("data.json", "r") as data_file:
+                data = json.load(data_file)
 
-# ---------------------------- UI SETUP ------------------------------- #
+        except FileNotFoundError:
+            with open("data.json", "w") as data_file:
+                json.dump(new_data, data_file, indent=4)
+        # In case an empty .json file is created the empty file can't be read on 46
+        except json.JSONDecodeError as e:
+            print(f"{e}\n Please delete the empty .json file")
+
+        else:
+            # updating the old data and adding to the .json file
+            data.update(new_data)
+            with open("data.json", "w") as data_file:
+                json.dump(data, data_file, indent=4)
+
+        finally:
+            website_input.delete(0, END)
+            password_input.delete(0, END)
+
+# ui part
 
 
 window = Tk()
@@ -58,13 +92,15 @@ canvas.grid(column=1, row=0)
 
 website_label = Label(text="Website:")
 website_label.grid(column=0, row=1)
-website_input = Entry(width=39)
+website_input = Entry(width=21)
 website_input.focus()
-website_input.grid(column=1, row=1, columnspan=2)
+website_input.grid(column=1, row=1)
+search_button = Button(text="Search", width=15, command=find_password)
+search_button.grid(row=1, column=2)
 
 email_label = Label(text="Email/Username:")
 email_label.grid(column=0, row=2)
-email_input = Entry(width=39)
+email_input = Entry(width=40)
 email_input.insert(0, "regular_every_day_normal_mf@gmail.com")
 email_input.grid(column=1, row=2, columnspan=2)
 
@@ -76,7 +112,7 @@ password_input.grid(column=1, row=3)
 generate_button = Button(text="Generate Password", command=generate_password)
 generate_button.grid(column=2, row=3)
 
-add_button = Button(text="Add", width=36, command=save)
+add_button = Button(text="Add", width=34, command=save)
 add_button.grid(column=1, row=5, columnspan=2)
 
 window.mainloop()
